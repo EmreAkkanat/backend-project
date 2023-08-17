@@ -7,7 +7,7 @@ const schema = mongoose.Schema(
   },
   {
     versionKey: false,
-    timesstamps: {
+    timestamps: {
       createdAt: "created_at",
       updatedAt: "updated_at",
     },
