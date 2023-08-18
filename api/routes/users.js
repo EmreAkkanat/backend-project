@@ -1,5 +1,5 @@
 var express = require("express");
-const bycript = require("bcrypt-nodejs");
+const bcrypt = require("bcrypt-nodejs");
 const is = require("is_js");
 const jwt = require("jwt-simple");
 
@@ -11,6 +11,7 @@ const UserRoles = require("../db/models/UserRoles");
 const Roles = require("../db/models/Roles");
 const config = require("../config");
 const auth = require("../lib/auth")();
+const i18n = new (require("../lib/i18n"))(config.DEFAULT_LANG);
 var router = express.Router();
 
 router.post("/register", async (req, res) => {
@@ -51,11 +52,7 @@ router.post("/register", async (req, res) => {
       );
     }
 
-    let password = bycript.hashSync(
-      body.password,
-      bycript.genSaltSync(8),
-      null
-    );
+    let password = bcrypt.hashSync(body.password, bcrypt.genSaltSync(8), null);
 
     let createdUser = await Users.create({
       email: body.email,
@@ -97,16 +94,16 @@ router.post("/auth", async (req, res) => {
     if (!user) {
       throw new CustomError(
         Enum.HTTP_CODES.UNAUTHORIZED,
-        "Validation Error",
-        "email or password wrong"
+        i18n.translate("COMMON.VALIDATION_ERROR_TITLE", req.user.language),
+        i18n.translate("USERS.AUTH_ERROR", req.user.language)
       );
     }
 
     if (!user.validPassword(password)) {
       throw new CustomError(
         Enum.HTTP_CODES.UNAUTHORIZED,
-        "Validation Error",
-        "email or password wrong"
+        i18n.translate("COMMON.VALIDATION_ERROR_TITLE", req.user.language),
+        i18n.translate("USERS.AUTH_ERROR", req.user.language)
       );
     }
 
@@ -152,38 +149,49 @@ router.post("/add", auth.checkRoles("user_add"), async (req, res) => {
     if (!body.email) {
       throw new CustomError(
         Enum.HTTP_CODES.BAD_REQUEST,
-        "Validation Error",
-        "email fields must be filled"
+        i18n.translate("COMMON.VALIDATION_ERROR_TITLE", req.user.language),
+        i18n.translate("COMMON.FIELD_MUST_BE_FILLED", req.user.language, [
+          "email",
+        ])
       );
     }
+
     if (is.not.email(body.email)) {
       throw new CustomError(
         Enum.HTTP_CODES.BAD_REQUEST,
-        "Validation Error",
-        "email fields must be an email format"
+        i18n.translate("COMMON.VALIDATION_ERROR_TITLE", req.user.language),
+        i18n.translate("USERS.EMAIL_FORMAT_ERROR", req.user.language)
       );
     }
+
     if (!body.password) {
       throw new CustomError(
         Enum.HTTP_CODES.BAD_REQUEST,
-        "Validation Error",
-        "password fields must be filled"
+        i18n.translate("COMMON.VALIDATION_ERROR_TITLE", req.user.language),
+        i18n.translate("COMMON.FIELD_MUST_BE_FILLED", req.user.language, [
+          "password",
+        ])
       );
     }
 
     if (body.password.length < Enum.PASS_LENGTH) {
       throw new CustomError(
         Enum.HTTP_CODES.BAD_REQUEST,
-        "Validation Error!",
-        "password length must be greater than" + Enum.PASS_LENGTH
+        i18n.translate("COMMON.VALIDATION_ERROR_TITLE", req.user.language),
+        i18n.translate("USERS.PASSWORD_LENGTH_ERROR", req.user.language, [
+          Enum.PASS_LENGTH,
+        ])
       );
     }
 
     if (!body.roles || !Array.isArray(body.roles) || body.roles.length == 0) {
       throw new CustomError(
         Enum.HTTP_CODES.BAD_REQUEST,
-        "Validation Error",
-        "roles field must be an array"
+        i18n.translate("COMMON.VALIDATION_ERROR_TITLE", req.user.language),
+        i18n.translate("COMMON.FIELD_MUST_BE_TYPE", req.user.language, [
+          "roles",
+          "array",
+        ])
       );
     }
 
@@ -192,16 +200,15 @@ router.post("/add", auth.checkRoles("user_add"), async (req, res) => {
     if (roles.length == 0) {
       throw new CustomError(
         Enum.HTTP_CODES.BAD_REQUEST,
-        "Validation Error",
-        "roles field must be an array"
+        i18n.translate("COMMON.VALIDATION_ERROR_TITLE", req.user.language),
+        i18n.translate("COMMON.FIELD_MUST_BE_TYPE", req.user.language, [
+          "roles",
+          "array",
+        ])
       );
     }
 
-    let password = bycript.hashSync(
-      body.password,
-      bycript.genSaltSync(8),
-      null
-    );
+    let password = bcrypt.hashSync(body.password, bcrypt.genSaltSync(8), null);
 
     let user = await Users.create({
       email: body.email,
@@ -212,7 +219,7 @@ router.post("/add", auth.checkRoles("user_add"), async (req, res) => {
       phone_number: body.phone_number,
     });
 
-    for (let i; i < roles.length; i++) {
+    for (let i = 0; i < roles.length; i++) {
       await UserRoles.create({
         role_id: roles[i]._id,
         user_id: user._id,
@@ -221,7 +228,7 @@ router.post("/add", auth.checkRoles("user_add"), async (req, res) => {
 
     res
       .status(Enum.HTTP_CODES.CREATED)
-      .json(Response.succesResponse({ succes: true }, Enum.HTTP_CODES.CREATED));
+      .json(Response.successResponse({ succes: true }));
   } catch (error) {
     let errorResponse = Response.errorResponse(error);
     res.status(errorResponse.code).json(errorResponse);
@@ -236,15 +243,17 @@ router.post("/update", auth.checkRoles("user_update"), async (req, res) => {
     if (!body._id) {
       throw new CustomError(
         Enum.HTTP_CODES.BAD_REQUEST,
-        "Validation Error!",
-        "_id fields must be filled"
+        i18n.translate("COMMON.VALIDATION_ERROR_TITLE", req.user.language),
+        i18n.translate("COMMON.FIELD_MUST_BE_FILLED", req.user.language, [
+          "_id",
+        ])
       );
     }
 
     if (body.password && body.password.length < Enum.PASS_LENGTH) {
-      updates.password = bycript.hashSync(
+      updates.password = bcrypt.hashSync(
         body.password,
-        bycript.genSaltSync(8),
+        bcrypt.genSaltSync(8),
         null
       );
     }
@@ -305,8 +314,10 @@ router.post("/delete", auth.checkRoles("user_delete"), async (req, res) => {
     if (!body._id) {
       throw new CustomError(
         Enum.HTTP_CODES.BAD_REQUEST,
-        "Validation Error!",
-        "_id fields must be filled"
+        i18n.translate("COMMON.VALIDATION_ERROR_TITLE", req.user.language),
+        i18n.translate("COMMON.FIELD_MUST_BE_FILLED", req.user.language, [
+          "_id",
+        ])
       );
     }
 

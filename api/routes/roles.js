@@ -7,7 +7,9 @@ const Response = require("../lib/Response");
 const CustomError = require("../lib/Error");
 const Enum = require("../config/Enum");
 const role_privileges = require("../config/role_privileges");
+const config = require("../config");
 const auth = require("../lib/auth")();
+const i18n = new (require("../lib/i18n"))(config.DEFAULT_LANG);
 
 router.all("*", auth.authenticate(), (req, res, next) => {
   next();
@@ -30,10 +32,13 @@ router.post("/add", auth.checkRoles("role_add"), async (req, res) => {
     if (!body.role_name) {
       throw new CustomError(
         Enum.HTTP_CODES.BAD_REQUEST,
-        "Validation Error!",
-        "role_name field must be filled"
+        i18n.translate("COMMON.VALIDATION_ERROR_TITLE", req.user.language),
+        i18n.translate("COMMON.FIELD_MUST_BE_FILLED", req.user.language, [
+          "role_name",
+        ])
       );
     }
+
     if (
       !body.permissions ||
       !Array.isArray(body.permissions) ||
@@ -41,8 +46,11 @@ router.post("/add", auth.checkRoles("role_add"), async (req, res) => {
     ) {
       throw new CustomError(
         Enum.HTTP_CODES.BAD_REQUEST,
-        "Validation Error!",
-        "permissions field must be an Array"
+        i18n.translate("COMMON.VALIDATION_ERROR_TITLE", req.user.language),
+        i18n.translate("COMMON.FIELD_MUST_BE_TYPE", req.user.language, [
+          "permissions",
+          "Array",
+        ])
       );
     }
 
@@ -77,8 +85,10 @@ router.post("/update", auth.checkRoles("role_update"), async (req, res) => {
     if (!body._id) {
       throw new CustomError(
         Enum.HTTP_CODES.BAD_REQUEST,
-        "Validation Error!",
-        "_id field must be filled"
+        i18n.translate("COMMON.VALIDATION_ERROR_TITLE", req.user.language),
+        i18n.translate("COMMON.FIELD_MUST_BE_FILLED", req.user.language, [
+          "_id",
+        ])
       );
     }
 
@@ -142,8 +152,10 @@ router.post("/delete", auth.checkRoles("role_delete"), async (req, res) => {
     if (!body._id) {
       throw new CustomError(
         Enum.HTTP_CODES.BAD_REQUEST,
-        "Validation Error!",
-        "_id field must be filled"
+        i18n.translate("COMMON.VALIDATION_ERROR_TITLE", req.user.language),
+        i18n.translate("COMMON.FIELD_MUST_BE_FILLED", req.user.language, [
+          "_id",
+        ])
       );
     }
 
