@@ -9,6 +9,26 @@ const logger = require("../lib/logger/LoggerClass");
 const config = require("../config");
 const auth = require("../lib/auth")();
 const i18n = new (require("../lib/i18n"))(config.DEFAULT_LANG);
+const emitter = require("../lib/Emitter");
+const excelExport = new (require("../lib/export"))();
+const fs = require("fs");
+const path = require("path");
+const multer = require("multer");
+const Import = new (require("../lib/import"))();
+
+let multerStorage = multer.diskStorage({
+  destination: (req, file, next) => {
+    next(null, config.FILE_UPLOAD_PATH);
+  },
+  filename: (req, file, next) => {
+    next(
+      null,
+      file.fieldname + "_" + Date.now() + path.extname(file.originalname)
+    );
+  },
+});
+
+const upload = multer({ storage: multerStorage }).single("pb_file");
 
 /* 
 CRUD
@@ -57,6 +77,9 @@ router.post("/add", auth.checkRoles("category_add"), async (req, res) => {
 
     AuditLogs.info(req.user?.email, "Categories", "Add", category);
     logger.info(req.user?.email, "Categories", "Add", category);
+    emitter
+      .getEmitter("notifications")
+      .emit("messages", { message: category.name + " is added" });
 
     res.json(Response.succesResponse({ success: true }));
   } catch (error) {
@@ -129,4 +152,60 @@ router.post("/delete", auth.checkRoles("category_delete"), async (req, res) => {
   }
 });
 
+router.post("/export", auth.checkRoles("category_export"), async (req, res) => {
+  try {
+    let categories = await Categories.find({});
+
+    let excel = excelExport.toExcel(
+      ["NAME", "IS ACTIVE?", "USER_ID", "CREATED AT", "UPDATED AT"],
+      ["name", "is_active", "created_by", "created_at", "updated_at"],
+      categories
+    );
+
+    let filePath =
+      __dirname + "/../tmp/categories_excel_" + Date.now() + ".xlsx";
+
+    fs.writeFileSync(filePath, excel, "UTF-8");
+
+    res.download(filePath);
+
+    /* fs.unlinkSync(filePath); */
+  } catch (error) {
+    let errorResponse = Response.errorResponse(error);
+    res.status(errorResponse.code).json(errorResponse);
+  }
+});
+
+router.post(
+  "/import",
+  auth.checkRoles("category_add"),
+  upload,
+  async (req, res) => {
+    try {
+      let file = req.file;
+      let body = req.body;
+
+      let rows = Import.fromExcel(file.path);
+
+      for (let i = 1; i < rows.length; i++) {
+        let [name, is_active, user, created_at, updated_at] = rows[i];
+
+        if (name) {
+          await Categories.create({
+            name,
+            is_active,
+            created_by: req.user._id,
+          });
+        }
+      }
+
+      res
+        .status(Enum.HTTP_CODES.CREATED)
+        .json(Response.succesResponse(req.body));
+    } catch (error) {
+      let errorResponse = Response.errorResponse(error);
+      res.status(errorResponse.code).json(errorResponse);
+    }
+  }
+);
 module.exports = router;
