@@ -1,4 +1,6 @@
-api/node_modules/
-api/package-lock.json
-api/.env
+**/node_modules/
+**/package-lock.json
+**/.env
 yapı
+api/tmp/
+.vscode
