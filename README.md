@@ -1,0 +1,1 @@
+eğitimden yararlanarak yapılmıştır
